@@ -108,7 +108,7 @@ Implements the similarity-based weighting scheme used to emphasize historical wi
 Feature construction and weighted **two-step LASSO** for forecasting.
 
 ### `baselines.py`
-Baseline forecasting models used for comparison, including naive and ARIMA-style forecasts.
+Baseline forecasting models used for comparison, including naive and ARIMA forecasts.
 
 ### `evaluation.py`
 Backtesting utilities and horizon-by-horizon error summaries.
