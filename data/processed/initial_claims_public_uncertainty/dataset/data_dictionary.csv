@@ -1,5 +1,5 @@
 variable,type,source,code,description,frequency
-initial_claims,target (y),FRED,ICSA,"Initial Claims, seasonally adjusted","Weekly, Ending Saturday"
+initial_claims,target (y),FRED,ICSA,U.S. initial jobless claims in levels,"Weekly, ending Saturday"
 continued_claims,input (x),FRED,CCSA,Continued Claims (Insured Unemployment),"Weekly, Ending Saturday"
 nfci,input (x),FRED,NFCI,Chicago Fed National Financial Conditions Index,Weekly
 vix,input (x),FRED,VIXCLS,CBOE Volatility Index,Daily
