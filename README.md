@@ -6,13 +6,13 @@ The core idea is to replace hand-crafted lag features with **path signatures**: 
 
 ## Why signature features?
 
-Given a path \(X : [a,b] \to \mathbb{R}^d\), its signature is the collection
+Given a path $X : [a,b] \to \mathbb{R}^d$, its signature is the collection
 
-\[
+$$
 \mathrm{Sig}(X) = \left(1, \int dX, \int dX \otimes dX, \int dX \otimes dX \otimes dX, \dots \right).
-\]
+$$
 
-The truncated signature of depth \(N\) keeps only terms up to order \(N\), yielding a finite-dimensional feature map.
+The truncated signature of depth $N$ keeps only terms up to order $N$, yielding a finite-dimensional feature map.
 
 This construction is useful for regression because:
 
@@ -146,9 +146,9 @@ This balances flexibility, sparsity, and interpretability.
 ### 5. Multi-horizon evaluation
 The full procedure is repeated for several forecast horizons:
 
-\[
+$$
 \Delta t \in \{1,2,3,4,6,8,12\}.
-\]
+$$
 
 Forecast accuracy is then compared against baseline models.
 
@@ -178,6 +178,7 @@ Launch the notebook and run it from top to bottom:
 ```bash
 jupyter notebook notebooks/01_reproduce_gu_signature_forecast.ipynb
 ```
+
 
 ## Reference
 
