@@ -1,0 +1,11 @@
+variable,type,source,code,description
+consumer_loans,target (y),FRED,CCLACBW027SBOG,"Consumer Loans: Credit Cards and Other Revolving Plans, All Commercial Banks"
+sp500,input (x),FRED,SP500,S&P 500 Stock Price
+bank_credit,input (x),FRED,TOTBKCR,"Bank Credit, All Commercial Banks"
+gas_price,input (x),FRED,GASREGW,U.S. Regular All Formulations Gas Price
+loans_leases,input (x),FRED,TOTLL,"Loans and Leases in Bank Credit, All Commercial Banks"
+securities,input (x),FRED,SBCACBW027SBOG,"Securities in Bank Credit, All Commercial Banks (Weekly, SA, Wed)"
+ovx,input (x),FRED,OVXCLS,CBOE Crude Oil ETF Volatility Index
+wti_crude,input (x),FRED,DCOILWTICO,Crude Oil Prices: West Texas Intermediate (WTI)
+brent_crude,input (x),FRED,DCOILBRENTEU,Crude Oil Prices: Brent - Europe
+amazon_stock,input (x),Yahoo Finance,AMZN,Amazon Inc. Stock Price (Close)
