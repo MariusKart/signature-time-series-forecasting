@@ -1,6 +1,6 @@
 # Transportation Marketplace Rate Forecast Using Signature Transform
 
-This repository implements a signature-based forecasting pipeline for weekly time series regression, inspired by *Transportation Marketplace Rate Forecast Using Signature Transform by Gu et al.* It was developed for the first-term Statistical Methods coursework in the Imperial College London MSc in Mathematics and Finance (2026–27).
+This repository implements a signature-based forecasting pipeline for weekly time series regression, inspired by *Transportation Marketplace Rate Forecast Using Signature Transform by Gu et al.* It was developed for the first-term Statistical Methods coursework, during  MSc in Mathematics and Finance (2026–27) at  the Imperial College London.
 
 The core idea is to replace hand-crafted lag features with **path signatures**: compact summaries of sequential data built from iterated integrals. In practice, this lets us transform a nonlinear forecasting problem on historical paths into a tractable regression problem on signature features, while still preserving temporal order and higher-order interactions.
 
