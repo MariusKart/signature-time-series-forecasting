@@ -4,7 +4,7 @@ This repository studies **signature-based forecasting for sequential data**. The
 
 ## Why signatures?
 
-For a path \(X_t\), the signature is the collection of its iterated integrals. In practice, a truncated signature acts as a compact nonlinear summary of:
+For a path $X_t$, the signature is the collection of its iterated integrals. In practice, a truncated signature acts as a compact nonlinear summary of:
 - the order in which moves happened,
 - the interaction between channels,
 - the geometry of the recent path.
