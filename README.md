@@ -1,59 +1,39 @@
 # Transportation Marketplace Rate Forecast Using Signature Transform
 
-This repository implements a signature-based forecasting pipeline for weekly time series regression, inspired by *Transportation Marketplace Rate Forecast Using Signature Transform by Gu et al.* It was developed for the first-term Statistical Methods coursework, during  MSc in Mathematics and Finance (2026–27) at  Imperial College London.
+This repository studies **signature-based forecasting for sequential data**. The core idea is to turn a recent path into a finite-dimensional feature vector through the **signature transform**, then fit a sparse forecasting model on top of those path features. The project also includes an **uncertainty-forecasting extension** based on weighted quantile regression, so the model can produce prediction intervals in addition to point forecasts.
 
-The core idea is to replace hand-crafted lag features with **path signatures**: compact summaries of sequential data built from iterated integrals. In practice, this lets us transform a nonlinear forecasting problem on historical paths into a tractable regression problem on signature features, while still preserving temporal order and higher-order interactions.
+## Why signatures?
 
-## Why signature features?
+For a path \(X_t\), the signature is the collection of its iterated integrals. In practice, a truncated signature acts as a compact nonlinear summary of:
+- the order in which moves happened,
+- the interaction between channels,
+- the geometry of the recent path.
 
-Given a path $X : [a,b] \to \mathbb{R}^d$, its signature is the collection
+This is useful for regression because many forecasting problems are not driven only by current levels. They depend on **how the path evolved**. A linear model on signature features can therefore capture nonlinear path dependence without requiring a very large black-box architecture.
 
-$$
-\mathrm{Sig}(X) = \left(1, \int dX, \int dX \otimes dX, \int dX \otimes dX \otimes dX, \dots \right).
-$$
+## Adaptive weighting with the signature kernel
 
-The truncated signature of depth $N$ keeps only terms up to order $N$, yielding a finite-dimensional feature map.
+The project also uses a **signature-kernel distance** to compare the current path with historical windows. Those distances are converted into adaptive sample weights, so the regression focuses more on past periods that look similar to the current regime.
 
-This construction is useful for regression because:
+At a high level, the workflow is:
 
-- **it captures ordered interactions** between observations, not just pointwise levels or lags;
-- **it is expressive**: linear functionals of signatures can approximate a broad class of nonlinear functionals of paths;
-- **it is stable and structured** for sequential data, especially after **time augmentation**, which appends time as an additional channel;
-- **it supports kernel-based similarity measures**, allowing the model to upweight historical windows that resemble the current regime.
+1. download and align the time series,
+2. build weekly forecasting datasets,
+3. compute signature-based features over rolling windows,
+4. adapt sample weights using signature similarity,
+5. fit the forecasting model,
+6. evaluate across multiple horizons.
 
-In this repository, signature features are combined with an **adaptive two-step LASSO**:
-1. a signature kernel is used to compute similarity-based sample weights;
-2. a weighted LASSO selects predictive features;
-3. an OLS refit is performed on the selected support.
+## Uncertainty forecasting
 
-This gives an interpretable regression pipeline that can adapt to changing regimes while remaining much lighter than a deep sequence model.
+The probabilistic extension keeps the same signature features and adaptive weighting, but replaces the point-forecast head with **weighted quantile regression**. This produces conditional quantiles such as 10%, 50%, and 90%, which can be turned into prediction intervals and evaluated through:
+- **pinball loss**,
+- **interval coverage**,
+- **average interval width**.
 
-## What this repository does
-
-The code builds a complete forecasting workflow for a weekly target series using public macro and market covariates:
-
-- downloads and aligns the raw series;
-- resamples everything to a common **weekly Wednesday** frequency;
-- constructs rolling path features;
-- computes truncated signatures and signature-kernel adaptive weights;
-- fits the two-step LASSO across multiple forecast horizons;
-- compares the signature-based model with baseline methods.
-
-The main target used here is:
-
-- **Consumer Loans: Credit Cards and Other Revolving Plans, All Commercial Banks** (`CCLACBW027SBOG`)
-
-The explanatory variables used in the notebooks include market and macroeconomic proxies such as:
-
-- S&P 500,
-- Amazon stock,
-- WTI oil price,
-- unemployment rate,
-- effective federal funds rate,
-- industrial production,
-- personal consumption expenditures,
-- consumer sentiment,
-- nonfarm payrolls.
+In other words, the repository now supports both:
+- **point forecasting**, and
+- **uncertainty forecasting via conditional quantiles**.
 
 ## Repository structure
 
@@ -63,105 +43,78 @@ The explanatory variables used in the notebooks include market and macroeconomic
 ├── requirements.txt
 ├── pyproject.toml
 ├── data/
-│   ├── full_dataset.csv
-│   ├── train_data.csv
-│   ├── validation_data.csv
-│   ├── data_dictionary.csv
-│   ├── forecast_results_delta*.csv
-│   ├── signature_mre_by_horizon.csv
-│   └── table_a3_full_comparison.csv
+│   └── processed/
 ├── figures/
 ├── notebooks/
-│   └── 01_reproduce_gu_signature_forecast.ipynb
+│   ├── 01_reproduce_gu_signature_forecast.ipynb
+│   ├── 02_initial_claims_public_data_experiment.ipynb
+│   ├── 03_uncertainty_forecasting_consumer_loans.ipynb
+│   └── 04_uncertainty_forecasting_initial_claims.ipynb
 └── src/
     └── marketplace_signature_forecast/
         ├── __init__.py
-        ├── adaptive_weights.py
-        ├── baselines.py
         ├── config.py
+        ├── dataset_specs.py
         ├── data_loading.py
-        ├── evaluation.py
-        ├── modeling.py
-        ├── plotting.py
         ├── preprocessing.py
-        └── signature.py
+        ├── signature.py
+        ├── adaptive_weights.py
+        ├── modeling.py
+        ├── baselines.py
+        ├── evaluation.py
+        ├── quantile_modeling.py
+        ├── quantile_evaluation.py
+        └── plotting.py
 ```
 
-## Module overview
+## Notebooks
 
-### `data_loading.py`
-Utilities to download the raw series from FRED and Yahoo Finance.
+### 1. `01_reproduce_gu_signature_forecast.ipynb`
+Point-forecasting experiment on the original **consumer-loans** dataset.
 
-### `preprocessing.py`
-Weekly resampling, alignment, merging, train/validation split, and dataset export.
+### 2. `02_initial_claims_public_data_experiment.ipynb`
+Point-forecasting experiment on a second fully public dataset built around **U.S. initial jobless claims**.
+
+### 3. `03_uncertainty_forecasting_consumer_loans.ipynb`
+Probabilistic extension of the original consumer-loans experiment. It estimates conditional quantiles and evaluates prediction intervals.
+
+### 4. `04_uncertainty_forecasting_initial_claims.ipynb`
+Probabilistic extension of the public initial-claims experiment.
+
+## Main modules
 
 ### `signature.py`
-Core signature-transform logic:
-- truncated signature computation,
-- signature dimension utilities,
-- signature kernel and signature-kernel distance.
+Implements the signature transform and the signature-kernel utilities used to compare rolling windows.
 
 ### `adaptive_weights.py`
-Implements the similarity-based weighting scheme used to emphasize historical windows close to the current forecasting regime.
+Builds adaptive weights from path similarity and calibrates the temperature parameter through an effective-sample-size target.
 
 ### `modeling.py`
-Feature construction and weighted **two-step LASSO** for forecasting.
+Contains the point-forecasting pipeline based on signature features and two-step LASSO.
 
-### `baselines.py`
-Baseline forecasting models used for comparison, including naive and ARIMA forecasts.
+### `quantile_modeling.py`
+Contains the probabilistic extension based on weighted quantile regression.
 
 ### `evaluation.py`
-Backtesting utilities and horizon-by-horizon error summaries.
+Runs rolling point forecasts and exports horizon-by-horizon evaluation outputs.
 
-### `plotting.py`
-Exploratory plots, diagnostics for adaptive weights, and forecast-vs-actual charts.
+### `quantile_evaluation.py`
+Runs rolling probabilistic forecasts and exports quantile, interval, and calibration metrics.
 
-## Forecasting pipeline
+### `dataset_specs.py`
+Stores reusable specifications for the public initial-claims experiment.
 
-The notebook runs the following sequence:
+## Datasets used in the notebooks
 
-### 1. Data preparation
-All series are downloaded, cleaned, and resampled to weekly Wednesday frequency.
-A merged dataset is then split into:
+### Consumer-loans experiment
+- target: `CCLACBW027SBOG`
+- weekly alignment ending on Wednesday
+- macro and market covariates from FRED and Yahoo Finance
 
-- **training set**,
-- **12-week validation set**.
-
-### 2. Path construction and signature features
-For each forecast origin, rolling windows are extracted and converted into path objects.
-The implementation uses **time augmentation** and a **truncated signature** to turn each path into a finite-dimensional feature vector.
-
-### 3. Adaptive weighting via signature kernel
-For a given forecast origin, the current market regime is compared with past windows using the **signature kernel**.
-This produces observation weights that give more influence to historically similar periods.
-
-### 4. Two-step LASSO regression
-The forecasting model is fitted in two stages:
-
-- **weighted LASSO** for variable selection,
-- **OLS refit** on the selected features.
-
-This balances flexibility, sparsity, and interpretability.
-
-### 5. Multi-horizon evaluation
-The full procedure is repeated for several forecast horizons:
-
-$$
-\Delta t \in \{1,2,3,4,6,8,12\}.
-$$
-
-Forecast accuracy is then compared against baseline models.
-
-## Outputs
-
-Running the notebook produces:
-
-- `data/full_dataset.csv`: merged weekly dataset,
-- `data/train_data.csv` and `data/validation_data.csv`: train/validation split,
-- `data/forecast_results_delta*.csv`: forecast results for each horizon,
-- `data/signature_mre_by_horizon.csv`: summary error table for the signature model,
-- `data/table_a3_full_comparison.csv`: comparison with baselines,
-- figures saved under `figures/`.
+### Initial-claims experiment
+- target: `ICSA`
+- weekly alignment ending on Saturday
+- macro and market covariates from FRED
 
 ## Installation
 
@@ -171,15 +124,23 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-## Usage
-
-Launch the notebook and run it from top to bottom:
+## Running the notebooks
 
 ```bash
-jupyter notebook notebooks/01_reproduce_gu_signature_forecast.ipynb
+jupyter notebook notebooks/
 ```
 
+Run the notebooks from top to bottom. Processed outputs are written under `data/processed/`, and figures are written under `figures/`.
 
-## Reference
+## Outputs
 
-Haotian Gu, Xin Guo, Timothy L. Jacobs, Philip Kaminsky, and Xinyu Li, *Transportation Marketplace Rate Forecast Using Signature Transform*.
+Depending on the notebook, the repository writes:
+- processed datasets,
+- forecast tables by horizon,
+- summary comparison tables,
+- prediction-interval plots,
+- baseline comparison outputs.
+
+## Notes
+
+This repository uses public time series and is designed as a reproducible research project around signature-based regression and probabilistic forecasting.

@@ -8,7 +8,6 @@ from .adaptive_weights import calibrate_gamma_at_t, compute_weights_at_t
 from .signature import compute_signature, flatten_signature, signature_dimension
 
 
-
 def two_step_lasso(
     X_features: np.ndarray,
     y_target: np.ndarray,
@@ -69,7 +68,6 @@ def two_step_lasso(
     }
 
 
-
 def construct_features_for_forecast(
     X: np.ndarray,
     y: np.ndarray,
@@ -95,7 +93,11 @@ def construct_features_for_forecast(
     n_samples = len(valid_indices)
 
     d_aug = 2 if add_time else 1
-    sig_dim = signature_dimension(d_aug, depth) if use_sig_y_only else signature_dimension(X.shape[1] + 1 + int(add_time), depth)
+    sig_dim = (
+        signature_dimension(d_aug, depth)
+        if use_sig_y_only
+        else signature_dimension(X.shape[1] + 1 + int(add_time), depth)
+    )
     d_x = X.shape[1]
     feature_dim = d_x + sig_dim if use_sig_y_only else sig_dim
 
@@ -103,18 +105,45 @@ def construct_features_for_forecast(
     targets = np.zeros(n_samples)
 
     for i, tau in enumerate(valid_indices):
-        if use_sig_y_only:
-            x_tau = X[tau]
-            y_window = y[tau - window_size + 1 : tau + 1]
-            sig_flat = flatten_signature(compute_signature(y_window, depth=depth, add_time=add_time))
-            features[i] = np.concatenate([x_tau, sig_flat])
-        else:
-            xy_window = np.column_stack([X[tau - window_size + 1 : tau + 1], y[tau - window_size + 1 : tau + 1]])
-            features[i] = flatten_signature(compute_signature(xy_window, depth=depth, add_time=add_time))
+        features[i] = build_design_vector(
+            X=X,
+            y=y,
+            t=tau,
+            window_size=window_size,
+            depth=depth,
+            use_sig_y_only=use_sig_y_only,
+            add_time=add_time,
+        )
         targets[i] = y[tau + delta_t] - y[tau]
 
     return features, targets, valid_indices
 
+
+def build_design_vector(
+    X: np.ndarray,
+    y: np.ndarray,
+    t: int,
+    window_size: int,
+    depth: int,
+    use_sig_y_only: bool = True,
+    add_time: bool = True,
+) -> np.ndarray:
+    X = np.asarray(X, dtype=float)
+    y = np.asarray(y, dtype=float).ravel()
+    if X.ndim == 1:
+        X = X.reshape(-1, 1)
+
+    if t - window_size + 1 < 0:
+        raise ValueError(f"Not enough history to build design vector at t={t}")
+
+    if use_sig_y_only:
+        x_t = X[t]
+        y_window = y[t - window_size + 1 : t + 1]
+        sig_flat = flatten_signature(compute_signature(y_window, depth=depth, add_time=add_time))
+        return np.concatenate([x_t, sig_flat])
+
+    xy_window = np.column_stack([X[t - window_size + 1 : t + 1], y[t - window_size + 1 : t + 1]])
+    return flatten_signature(compute_signature(xy_window, depth=depth, add_time=add_time))
 
 
 def rolling_forecast(
@@ -172,15 +201,15 @@ def rolling_forecast(
                 add_time=add_time,
             )
             model = two_step_lasso(X_train, y_train, weights, lambda_lasso=lambda_lasso)
-
-            if use_sig_y_only:
-                x_t = X[t]
-                y_window = y[t - window_size + 1 : t + 1]
-                sig_flat = flatten_signature(compute_signature(y_window, depth=depth, add_time=add_time))
-                X_forecast = np.concatenate([x_t, sig_flat])
-            else:
-                xy_window = np.column_stack([X[t - window_size + 1 : t + 1], y[t - window_size + 1 : t + 1]])
-                X_forecast = flatten_signature(compute_signature(xy_window, depth=depth, add_time=add_time))
+            X_forecast = build_design_vector(
+                X=X,
+                y=y,
+                t=t,
+                window_size=window_size,
+                depth=depth,
+                use_sig_y_only=use_sig_y_only,
+                add_time=add_time,
+            )
 
             predicted_diff = float(np.dot(X_forecast, model["coefficients"]) + model["intercept"])
             y_forecast = float(y[t] + predicted_diff)

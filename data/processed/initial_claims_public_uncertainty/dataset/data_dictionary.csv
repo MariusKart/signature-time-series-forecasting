@@ -1,0 +1,9 @@
+variable,type,source,code,description,frequency
+initial_claims,target (y),FRED,ICSA,"Initial Claims, seasonally adjusted","Weekly, Ending Saturday"
+continued_claims,input (x),FRED,CCSA,Continued Claims (Insured Unemployment),"Weekly, Ending Saturday"
+nfci,input (x),FRED,NFCI,Chicago Fed National Financial Conditions Index,Weekly
+vix,input (x),FRED,VIXCLS,CBOE Volatility Index,Daily
+term_spread,input (x),FRED,T10Y2Y,10-Year Treasury Constant Maturity Minus 2-Year Treasury Constant Maturity,Daily
+sp500,input (x),FRED,SP500,S&P 500 Index,Daily
+wti_crude,input (x),FRED,DCOILWTICO,WTI Crude Oil Spot Price,Daily
+effr,input (x),FRED,FEDFUNDS,Effective Federal Funds Rate,Monthly

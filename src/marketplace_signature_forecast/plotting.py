@@ -145,3 +145,61 @@ def plot_forecast_vs_actual(forecast_df: pd.DataFrame, delta_t: int):
     axes[1].grid(True, alpha=0.3, axis="y")
     fig.tight_layout()
     plt.show()
+
+
+def plot_quantile_forecast_interval(
+    forecast_df: pd.DataFrame,
+    delta_t: int,
+    lower_quantile: float = 0.1,
+    median_quantile: float = 0.5,
+    upper_quantile: float = 0.9,
+    target_label: str = "Target",
+    path: str | Path | None = None,
+):
+    lower_col = f"q{str(lower_quantile).replace('.', '_')}_orig"
+    median_col = f"q{str(median_quantile).replace('.', '_')}_orig"
+    upper_col = f"q{str(upper_quantile).replace('.', '_')}_orig"
+
+    fig, axes = plt.subplots(2, 1, figsize=(14, 8), sharex=True)
+    axes[0].plot(forecast_df["target_date"], forecast_df["actual_orig"], label="Actual", linewidth=2)
+    axes[0].plot(
+        forecast_df["target_date"],
+        forecast_df[median_col],
+        label=f"Median forecast (q={median_quantile:.1f})",
+        linewidth=2,
+        linestyle="--",
+    )
+    axes[0].fill_between(
+        forecast_df["target_date"],
+        forecast_df[lower_col],
+        forecast_df[upper_col],
+        alpha=0.25,
+        label=f"Prediction band [{lower_quantile:.1f}, {upper_quantile:.1f}]",
+    )
+    axes[0].set_title(f"{delta_t}-week ahead quantile forecast")
+    axes[0].set_ylabel(target_label)
+    axes[0].legend(frameon=False)
+
+    coverage = (
+        (forecast_df["actual_orig"] >= forecast_df[lower_col])
+        & (forecast_df["actual_orig"] <= forecast_df[upper_col])
+    )
+    axes[1].plot(
+        forecast_df["target_date"],
+        forecast_df[upper_col] - forecast_df[lower_col],
+        linewidth=1.8,
+        label="Interval width",
+    )
+    axes[1].scatter(
+        forecast_df["target_date"],
+        coverage.astype(int),
+        s=30,
+        alpha=0.8,
+        label="Coverage indicator",
+    )
+    axes[1].set_title("Interval width and coverage")
+    axes[1].set_ylabel("Width / indicator")
+    axes[1].set_xlabel("Date")
+    axes[1].legend(frameon=False)
+    fig.tight_layout()
+    save_or_show(fig, path)
