@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict, Tuple
+from typing import Dict, Mapping, Tuple
 
 import pandas as pd
 import yfinance as yf
@@ -11,6 +11,8 @@ from .config import FRED_INPUTS, TARGET, YAHOO_INPUTS
 
 
 DataFrameDict = Dict[str, pd.DataFrame]
+SeriesSpec = Mapping[str, str]
+SeriesSpecDict = Mapping[str, Mapping[str, str]]
 
 
 def download_fred_series(fred: Fred, series_id: str, start: str, end: str, name: str) -> pd.DataFrame | None:
@@ -24,7 +26,6 @@ def download_fred_series(fred: Fred, series_id: str, start: str, end: str, name:
         return df
     except Exception:
         return None
-
 
 
 def download_yahoo_series(ticker: str, start: str, end: str, name: str) -> pd.DataFrame | None:
@@ -41,20 +42,30 @@ def download_yahoo_series(ticker: str, start: str, end: str, name: str) -> pd.Da
         return None
 
 
-
-def fetch_marketplace_series(api_key: str, start: str, end: str) -> Tuple[pd.DataFrame, DataFrameDict]:
+def fetch_series_bundle(
+    api_key: str,
+    target: SeriesSpec,
+    start: str,
+    end: str,
+    fred_inputs: SeriesSpecDict | None = None,
+    yahoo_inputs: SeriesSpecDict | None = None,
+) -> Tuple[pd.DataFrame, DataFrameDict]:
     fred = Fred(api_key=api_key)
-    y_raw = download_fred_series(fred, TARGET["code"], start, end, TARGET["name"])
+    y_raw = download_fred_series(fred, target["code"], start, end, target["name"])
     if y_raw is None:
-        raise RuntimeError("Target series could not be downloaded from FRED.")
+        raise RuntimeError(f"Target series {target['code']} could not be downloaded from FRED.")
 
     x_raw: DataFrameDict = {}
-    for code, info in FRED_INPUTS.items():
+
+    fred_inputs = {} if fred_inputs is None else dict(fred_inputs)
+    yahoo_inputs = {} if yahoo_inputs is None else dict(yahoo_inputs)
+
+    for code, info in fred_inputs.items():
         df = download_fred_series(fred, code, start, end, info["name"])
         if df is not None:
             x_raw[info["name"]] = df
 
-    for ticker, info in YAHOO_INPUTS.items():
+    for ticker, info in yahoo_inputs.items():
         df = download_yahoo_series(ticker, start, end, info["name"])
         if df is not None:
             x_raw[info["name"]] = df
@@ -62,42 +73,65 @@ def fetch_marketplace_series(api_key: str, start: str, end: str) -> Tuple[pd.Dat
     return y_raw, x_raw
 
 
+def fetch_marketplace_series(api_key: str, start: str, end: str) -> Tuple[pd.DataFrame, DataFrameDict]:
+    return fetch_series_bundle(
+        api_key=api_key,
+        target=TARGET,
+        start=start,
+        end=end,
+        fred_inputs=FRED_INPUTS,
+        yahoo_inputs=YAHOO_INPUTS,
+    )
 
-def build_data_dictionary() -> pd.DataFrame:
+
+def build_data_dictionary_from_specs(
+    target: SeriesSpec,
+    fred_inputs: SeriesSpecDict | None = None,
+    yahoo_inputs: SeriesSpecDict | None = None,
+) -> pd.DataFrame:
     rows = [
         {
-            "variable": TARGET["name"],
+            "variable": target["name"],
             "type": "target (y)",
-            "source": TARGET["source"],
-            "code": TARGET["code"],
-            "description": TARGET["description"],
+            "source": target.get("source", "FRED"),
+            "code": target["code"],
+            "description": target.get("description", ""),
+            "frequency": target.get("frequency", ""),
         }
     ]
 
-    for code, info in FRED_INPUTS.items():
+    fred_inputs = {} if fred_inputs is None else dict(fred_inputs)
+    yahoo_inputs = {} if yahoo_inputs is None else dict(yahoo_inputs)
+
+    for code, info in fred_inputs.items():
         rows.append(
             {
                 "variable": info["name"],
                 "type": "input (x)",
-                "source": "FRED",
+                "source": info.get("source", "FRED"),
                 "code": code,
-                "description": info["description"],
+                "description": info.get("description", ""),
+                "frequency": info.get("frequency", ""),
             }
         )
 
-    for ticker, info in YAHOO_INPUTS.items():
+    for ticker, info in yahoo_inputs.items():
         rows.append(
             {
                 "variable": info["name"],
                 "type": "input (x)",
-                "source": "Yahoo Finance",
+                "source": info.get("source", "Yahoo Finance"),
                 "code": ticker,
-                "description": info["description"],
+                "description": info.get("description", ""),
+                "frequency": info.get("frequency", ""),
             }
         )
 
     return pd.DataFrame(rows)
 
+
+def build_data_dictionary() -> pd.DataFrame:
+    return build_data_dictionary_from_specs(TARGET, FRED_INPUTS, YAHOO_INPUTS)
 
 
 def save_dataframe(df: pd.DataFrame, path: str | Path) -> None:
