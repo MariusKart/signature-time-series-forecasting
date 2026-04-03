@@ -3,7 +3,7 @@
 This repository studies **signature-based forecasting for sequential data**. The core idea is to turn a recent path into a finite-dimensional feature vector through the **signature transform**, then fit a sparse forecasting model on top of those path features. The project also includes an **uncertainty-forecasting extension** based on weighted quantile regression, so the model can produce prediction intervals in addition to point forecasts.
 ## Why signatures?
 
-For a path \(X_t\), the signature is the collection of its iterated integrals. In practice, a truncated signature acts as a compact nonlinear summary of:
+For a path $(X_t)$, the signature is the collection of its iterated integrals. In practice, a truncated signature acts as a compact nonlinear summary of:
 - the order in which moves happened,
 - the interaction between channels,
 - the geometry of the recent path.
